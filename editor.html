@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AuraCanvas - Editor</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+
+<body>
+
+    <header class="action-bar topbar" style="padding: 10px 20px;">
+        <div style="display: flex; gap: 15px; align-items: center;">
+            <div class="brand" style="font-size: 1.2rem; margin-right: 20px; cursor: pointer;"
+                onclick="window.location.href='home.html'">
+                <i class="fas fa-home"></i> AuraCanvas
+            </div>
+            <input type="text" id="documentName" class="input-field" value="Untitled Canvas"
+                style="width: 200px; padding: 6px 12px; background: rgba(255,255,255,0.1); border: 1px solid var(--border-glass);">
+        </div>
+
+        <div style="display: flex; gap: 10px;">
+            <button class="btn" onclick="undo()" title="Undo (Ctrl+Z)"><i class="fas fa-undo"></i></button>
+            <button class="btn" onclick="redo()" title="Redo (Ctrl+Y)"><i class="fas fa-redo"></i></button>
+            <button class="btn" onclick="saveToHistory()"><i class="fas fa-save"></i> Save</button>
+            <button class="btn btn-accent" onclick="downloadImage()" title="Export Static Image (PNG)"><i
+                    class="fas fa-image"></i> PNG</button>
+        </div>
+    </header>
+
+    <div class="editor-layout">
+        <!-- Left Toolbar: Tools & Shapes -->
+        <div class="toolbar-left glass" style="border-radius: 0;">
+            <div class="control-group">
+                <button class="btn-icon active" title="Brush" data-tool="brush"><i
+                        class="fas fa-paint-brush"></i></button>
+                <button class="btn-icon" title="Eraser" data-tool="eraser"><i class="fas fa-eraser"></i></button>
+                <button class="btn-icon" title="Spray" data-tool="spray"><i class="fas fa-spray-can"></i></button>
+                <button class="btn-icon" title="Neon Glow" data-tool="neon"><i class="fas fa-lightbulb"></i></button>
+                <button class="btn-icon" title="Select Area to Move" data-tool="select"><i
+                        class="fas fa-vector-square"></i></button>
+
+                <div style="margin: 20px 0; width: 100%; height: 1px; background: var(--border-glass);"></div>
+
+                <select id="shapeSelect" class="input-field tooltip" title="Select a Shape"
+                    style="width: 100%; padding: 8px; font-family: 'Font Awesome 5 Free', var(--font-sans); font-weight: 900; background: rgba(0,0,0,0.5); color: white; border: 1px solid var(--border-glass); border-radius: 8px; margin-bottom: 5px; font-size: 0.9rem;">
+                    <option value="" disabled selected>&#xf2fd; Shapes</option>
+                    <option value="line">&#xf0dc; Line</option>
+                    <option value="curve">&#xf83e; Curve</option>
+                    <option value="circle">&#xf111; Circle</option>
+                    <option value="oval">&#xf141; Oval</option>
+                    <option value="rectangle">&#xf0c8; Rectangle</option>
+                    <option value="square">&#xf0c8; Square</option>
+                    <option value="rounded_rectangle">&#xf2d0; Rounded Rectangle</option>
+                    <option value="polygon">&#xf5eb; Polygon</option>
+                    <option value="triangle">&#xf0d8; Triangle</option>
+                    <option value="right_triangle">&#xf04b; Right Triangle</option>
+                    <option value="diamond">&#xf3a5; Diamond</option>
+                    <option value="arrow">&#xf061; Arrow</option>
+                    <option value="star">&#xf005; Star</option>
+                    <option value="bullet">&#xf46b; Bullet</option>
+                    <option value="heart">&#xf004; Heart</option>
+                </select>
+
+                <div style="margin: 20px 0; width: 100%; height: 1px; background: var(--border-glass);"></div>
+
+                <button class="btn-icon" title="Add Local Image"
+                    onclick="document.getElementById('imgUpload').click()"><i class="fas fa-image"></i></button>
+                <button class="btn-icon" title="Add Image URL (Google/Web)" onclick="addImageFromUrl()"><i
+                        class="fas fa-link"></i></button>
+                <input type="file" id="imgUpload" accept="image/*" style="display: none;"
+                    onchange="handleImageUpload(event)">
+                <button class="btn-icon" title="Clear Canvas" onclick="clearCanvas()"><i class="fas fa-trash-alt"
+                        style="color: var(--danger);"></i></button>
+            </div>
+        </div>
+
+        <!-- Workspace: Canvas & Overlay -->
+        <div class="workspace" id="workspace" style="overflow-y: auto;">
+            <div id="pagesContainer" style="display: flex; flex-direction: column; align-items: center; gap: 40px; padding: 40px 0;">
+                <div class="canvas-wrapper" style="width: 800px; height: 600px; position: relative; background: #fff; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
+                    <canvas class="main-canvas" width="800" height="600"
+                        style="position: absolute; top:0; left:0; z-index: 1;"></canvas>
+                    <canvas class="temp-canvas" width="800" height="600"
+                        style="position: absolute; top:0; left:0; z-index: 2; pointer-events: none;"></canvas>
+                    <div class="overlay-container"
+                        style="position: absolute; top:0; left:0; width: 100%; height: 100%; z-index: 5; pointer-events: none;">
+                    </div>
+                </div>
+            </div>
+            <button class="btn" style="margin-bottom: 40px; border: 1px dashed var(--accent); background: rgba(0,245,212,0.1); color: var(--accent);" onclick="addPage()">
+                <i class="fas fa-plus"></i> Add New Page
+            </button>
+        </div>
+
+        <!-- Right Toolbar: Properties & Animations -->
+        <div class="toolbar-right glass" style="border-radius: 0;">
+            <div class="control-group">
+                <label>Stroke Color</label>
+                <input type="color" id="strokeColor" value="#ffffff">
+            </div>
+
+            <div class="control-group">
+                <label>Fill Color (Shapes)</label>
+                <input type="color" id="fillColor" value="#7b2cbf">
+            </div>
+
+            <div class="control-group">
+                <label>Size / Stroke Width: <span id="strokeValue">5</span></label>
+                <input type="range" id="lineWidth" min="1" max="50" value="5"
+                    oninput="document.getElementById('strokeValue').innerText = this.value">
+            </div>
+
+            <div class="control-group">
+                <label>Eraser Size: <span id="eraserValue">20</span></label>
+                <input type="range" id="eraserWidth" min="1" max="100" value="20"
+                    oninput="document.getElementById('eraserValue').innerText = this.value">
+            </div>
+
+            <hr style="border-color: var(--border-glass); margin: 20px 0;">
+
+            <!-- Advanced Animation Tools (Hybrid Features) -->
+            <h4 style="font-family: var(--font-heading); margin-bottom: 15px; color: var(--accent);"><i
+                    class="fas fa-magic"></i> Animators & Text</h4>
+
+            <div class="control-group">
+                <label>Add Animated Element</label>
+                <input type="text" id="animTextInput" class="input-field" placeholder="Enter text or emoji..."
+                    style="margin-bottom: 10px;">
+                <select id="animFont" class="input-field" style="margin-bottom: 10px; padding: 10px;">
+                    <option value="var(--font-sans)">Sans-serif (Default)</option>
+                    <option value="var(--font-heading)">Heading Font (Outfit)</option>
+                    <option value="'Courier New', Courier, monospace">Monospace</option>
+                    <option value="'Brush Script MT', cursive">Cursive / Script</option>
+                    <option value="'Times New Roman', Times, serif">Serif</option>
+                    <option value="Impact, fantasy">Impact</option>
+                </select>
+                <select id="animType" class="input-field" style="margin-bottom: 10px; padding: 10px;">
+                    <option value="none">No Animation</option>
+                    <option value="anim-bounce">Bounce Loop</option>
+                    <option value="anim-spin">Continuous Spin</option>
+                    <option value="anim-pulse">Pulsing Effect</option>
+                </select>
+                <button class="btn btn-accent" style="width: 100%;" onclick="addAnimElement()">Add to Canvas
+                    Overlay</button>
+            </div>
+
+            <p style="font-size: 0.8rem; color: var(--text-muted);">
+                <b>Tip:</b> Click <i class="fas fa-video"></i> <b>Video</b> in the top right to easily export your
+                animated elements! Double-click added text to edit it, or <b>Right-click</b> to delete it.
+            </p>
+
+        </div>
+    </div>
+
+    <script src="editor.js"></script>
+</body>
+
+</html>
